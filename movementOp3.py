@@ -12,52 +12,113 @@ def prepare_arm():
     arm.set_state(0)
     time.sleep(0.5)
 
-def move_front_then_touch(front_amount, touch_amount, hold_time=3.0):
+def go_home(speed=20):
     prepare_arm()
-
-    print("Moving to safe home...")
-    code = arm.set_servo_angle(angle=SAFE_POSE, speed=20, wait=True)
+    code = arm.set_servo_angle(angle=SAFE_POSE, speed=speed, wait=True)
     if code != 0:
-        print(f"Safe home failed, code={code}")
-        return
+        print(f"Failed to reach home, code={code}")
+        return False
+    time.sleep(0.3)
+    return True
 
-    # front_amount controls how far in front the whole arm goes
-    front_pose = SAFE_POSE[:]
-    front_pose[2] = SAFE_POSE[2] - 1.5 *front_amount      # J3
-    front_pose[1] = SAFE_POSE[1] +  2* front_amount      # J2
+def get_pos():
+    _, pos = arm.get_position()
+    return pos  # [x, y, z, roll, pitch, yaw]
 
-    print(f"Moving arm in front with front_amount={front_amount}")
-    print(f"J2: {SAFE_POSE[1]:.1f} -> {front_pose[1]:.1f}")
-    print(f"J3: {SAFE_POSE[2]:.1f} -> {front_pose[2]:.1f}")
+def get_joints():
+    _, angles = arm.get_servo_angle()
+    return list(angles[:5])
 
-    code = arm.set_servo_angle(angle=front_pose, speed=15, wait=True)
+def move_to(x, y, z, speed=15):
+    """
+    Move to target XYZ (mm) from home pose.
+    Strategy: 
+      - J1 controls Y (left/right rotation of base)
+      - J2+J3 together control X (reach) and Z (height)
+      We compute deltas from home, then scale to joint adjustments
+      based on what the arm actually does from SAFE_POSE.
+    """
+    go_home()
+    time.sleep(0.5)
+
+    home_pos = get_pos()
+    home_joints = get_joints()
+    print(f"Home TCP:    X:{home_pos[0]:.1f} Y:{home_pos[1]:.1f} Z:{home_pos[2]:.1f}")
+    print(f"Home joints: {[f'{a:.1f}' for a in home_joints]}")
+
+    delta_x = x - home_pos[0]
+    delta_y = y - home_pos[1]
+    delta_z = z - home_pos[2]
+    print(f"Target deltas: dX:{delta_x:.1f} dY:{delta_y:.1f} dZ:{delta_z:.1f}")
+
+    # These scale factors come from xArm5 geometry:
+    # J1 (base rotation): 1 degree ≈ ~4.6mm Y change at 263mm reach
+    # J2 (shoulder):      1 degree ≈ affects X and Z
+    # J3 (elbow):         1 degree ≈ affects X and Z (opposite to J2)
+    # Tuned conservatively to avoid self-collision
+    J1_DEG_PER_MM_Y = 1.0 / 4.6
+    J2_DEG_PER_MM_Z = 1.0 / 5.0   # J2 up = Z up
+    J3_DEG_PER_MM_X = 1.0 / 4.0   # J3 negative = reach further
+
+    j1_delta = delta_y * J1_DEG_PER_MM_Y
+    j2_delta = delta_z * J2_DEG_PER_MM_Z
+    j3_delta = delta_x * J3_DEG_PER_MM_X * -1  # negative because J3 negative = more reach
+
+    target_joints = home_joints[:]
+    target_joints[0] += j1_delta
+    target_joints[1] += j2_delta
+    target_joints[2] += j3_delta
+
+    # Clamp to xArm5 joint limits
+    target_joints[0] = max(-360, min(360,  target_joints[0]))
+    target_joints[1] = max(-118, min(120,  target_joints[1]))
+    target_joints[2] = max(-225, min(11,   target_joints[2]))
+    target_joints[3] = max(-97,  min(180,  target_joints[3]))
+    target_joints[4] = max(-360, min(360,  target_joints[4]))
+
+    print(f"Target joints: {[f'{a:.1f}' for a in target_joints]}")
+
+    code = arm.set_servo_angle(angle=target_joints, speed=speed, wait=True)
     if code != 0:
-        print(f"Front move failed, code={code}")
-        return
+        print(f"Move failed code={code}")
+        arm.clean_error()
+        arm.set_state(0)
+        return False
 
-    # touch_amount controls the little touch motion
-    touch_pose = front_pose[:]
-    touch_pose[3] = front_pose[3] + touch_amount
+    actual = get_pos()
+    print(f"Actual TCP: X:{actual[0]:.1f} Y:{actual[1]:.1f} Z:{actual[2]:.1f}")
+    err = ((actual[0]-x)**2 + (actual[1]-y)**2 + (actual[2]-z)**2)**0.5
+    print(f"Error from target: {err:.1f}mm")
+    return True
 
-    print(f"Doing touch with touch_amount={touch_amount}")
-    code = arm.set_servo_angle(angle=touch_pose, speed=12, wait=True)
-    if code != 0:
-        print(f"Touch failed, code={code}")
-        return
 
-    print(f"Holding for {hold_time} seconds...")
-    time.sleep(hold_time)
+# --- First just map what the arm actually does ---
+# Move each joint independently to learn the real scale factors
+go_home()
+print("\n=== CALIBRATION: moving J3 by -10 degrees ===")
+j = get_joints()
+j[2] += -10
+arm.set_servo_angle(angle=j, speed=10, wait=True)
+pos = get_pos()
+print(f"After J3-10: X:{pos[0]:.1f} Y:{pos[1]:.1f} Z:{pos[2]:.1f}")
 
-    print("Returning from touch...")
-    code = arm.set_servo_angle(angle=front_pose, speed=12, wait=True)
-    if code != 0:
-        print(f"Touch return failed, code={code}")
-        return
+go_home()
+print("\n=== CALIBRATION: moving J2 by +10 degrees ===")
+j = get_joints()
+j[1] += 10
+arm.set_servo_angle(angle=j, speed=10, wait=True)
+pos = get_pos()
+print(f"After J2+10: X:{pos[0]:.1f} Y:{pos[1]:.1f} Z:{pos[2]:.1f}")
 
-    print("Returning home...")
-    code = arm.set_servo_angle(angle=SAFE_POSE, speed=15, wait=True)
-    if code != 0:
-        print(f"Return home failed, code={code}")
-        return
+go_home()
+print("\n=== CALIBRATION: moving J1 by +10 degrees ===")
+j = get_joints()
+j[0] += 10
+arm.set_servo_angle(angle=j, speed=10, wait=True)
+pos = get_pos()
+print(f"After J1+10: X:{pos[0]:.1f} Y:{pos[1]:.1f} Z:{pos[2]:.1f}")
 
-    print("Done.")
+go_home()
+
+time.sleep(1)
+arm.disconnect()
