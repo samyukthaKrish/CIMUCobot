@@ -82,10 +82,16 @@ def move_to(x, y, z, speed=15, steps=25):
 # 1. Always start from your safety home position first
 go_to_safe_home()
 
+move_to(300, 30, 30)
+move_to(300, 30, 0)
+move_to(300, 30, 30)
+move_to(300, 50, 30)
+move_to(300, 50, 0)
+move_to(300, 50, 30)
+move_to(300, 100, 0)
+move_to(300, 100, 30)
+move_to(300, 100, 0)
 
-move_to(300, 0, 0)
-move_to(310, 100, 0)
-move_to(320, 200, 0)
 
 # Clean disconnect
 time.sleep(1)
