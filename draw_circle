@@ -1,0 +1,21 @@
+from robot_movement import RobotMovement
+import math
+
+class CircleDrawer(RobotMovement):
+    def draw_circle(self, center_x, center_y, center_z, radius, speed=20, points=10, steps=4):
+        """Calculates circle perimeter coordinates at a specified Z height."""
+        print(f"Calculating circle: Center({center_x}, {center_y}, {center_z}), Radius: {radius}")
+        
+        start_x = center_x + radius
+        start_y = center_y
+        if not self.move_to(start_x, start_y, center_z, speed=speed, steps=50):
+            return False
+
+        for i in range(1, points + 1):
+            theta = (i / points) * (2 * math.pi)
+            target_x = center_x + radius * math.cos(theta)
+            target_y = center_y + radius * math.sin(theta)
+            
+            if not self.move_to(target_x, target_y, center_z, speed=speed, steps=steps):
+                return False
+        return True
