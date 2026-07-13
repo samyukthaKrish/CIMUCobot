@@ -1,0 +1,22 @@
+from robot_movement import RobotMovement
+
+class BoxDrawer(RobotMovement):
+    def draw_box(self, start_x, start_y, start_z, length, width, height=0, speed=30, steps=30):
+        """Calculates a box layout profile frame."""
+        end_z = start_z + height
+        print(f"Calculating box: Start({start_x}, {start_y}, {start_z}), Length:{length}, Width:{width}")
+        
+        if not self.move_to(start_x, start_y, start_z, speed=speed, steps=50): return False
+        if not self.move_to(start_x + length, start_y, start_z, speed=speed, steps=steps): return False
+        if not self.move_to(start_x + length, start_y + width, start_z, speed=speed, steps=steps): return False
+        if not self.move_to(start_x, start_y + width, start_z, speed=speed, steps=steps): return False
+        if not self.move_to(start_x, start_y, start_z, speed=speed, steps=steps): return False
+        
+        if height != 0:
+            if not self.move_to(start_x, start_y, end_z, speed=speed, steps=steps): return False
+            if not self.move_to(start_x + length, start_y, end_z, speed=speed, steps=steps): return False
+            if not self.move_to(start_x + length, start_y + width, end_z, speed=speed, steps=steps): return False
+            if not self.move_to(start_x, start_y + width, end_z, speed=speed, steps=steps): return False
+            if not self.move_to(start_x, start_y, end_z, speed=speed, steps=steps): return False
+            
+        return True
