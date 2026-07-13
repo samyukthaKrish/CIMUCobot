@@ -1,0 +1,18 @@
+from robot_movement import RobotMovement
+
+class LineInBoxDrawer(RobotMovement):
+    def draw_lineInBox(self, start_x, start_y, start_z, length, width, line_length, line_z, speed=30, steps=30):
+        """Calculates a centered line inside the imaginary boundaries of a box configuration."""
+        print(f"Calculating centered line (Length: {line_length}, Z: {line_z}) inside a {length}x{width} box space.")
+        
+        center_x = start_x + (length / 2.0)
+        center_y = start_y + (width / 2.0)
+        
+        line_start_x = center_x - (line_length / 2.0)
+        line_end_x = center_x + (line_length / 2.0)
+        
+        if not self.move_to(line_start_x, center_y, line_z, speed=speed, steps=50): 
+            return False
+        if not self.move_to(line_end_x, center_y, line_z, speed=speed, steps=steps): 
+            return False
+        return True
