@@ -17,7 +17,7 @@ time.sleep(1)
 # J3: -20.0 (Angle the elbow up to gain more height)
 # J4: -90.0 (Bends the wrist UP toward the sky)
 # J5: 0.0   (Keeps the lens oriented correctly)
-high_ceiling_pose = [0, -90.0, 0, -90.0, 0]
+high_ceiling_pose = [0, 20, -50, -90, 0]
 
 print("Lifting arm for 130mm clearance and flipping lens UP...")
 # Moving at speed 20 for safety
