@@ -1,0 +1,20 @@
+[
+  {
+    "label": "Epoxy Application",
+    "description": "Main epoxy dispensing sequence",
+    "project": "CIMUCobot",
+    "file": "epoxy_run.py"
+  },
+  {
+    "label": "Home Position",
+    "description": "Move arm to home position",
+    "project": "CIMUCobot",
+    "file": "home.py"
+  },
+  {
+    "label": "Maintenance Position",
+    "description": "Move arm to maintenance position",
+    "project": "CIMUCobot",
+    "file": "maintenance.py"
+  }
+]
